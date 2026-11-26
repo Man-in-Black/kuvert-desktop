@@ -4,13 +4,13 @@ Desktop-App für [Kuvert](https://github.com/Man-in-Black/kuvert) – eine schla
 Kuvert-Weboberfläche für **Linux, Windows und macOS**.
 
 - **Eigenes Fenster** mit Kuvert-Symbol, Fenstergröße wird gemerkt
-- **Symbol im Infobereich** (Tray): roter Punkt und Zähler bei neuen Nachrichten, Menü mit „Neue E-Mail",
+- **Symbol im Infobereich** (Tray): roter Punkt und Zähler bei Neuem (Mails, Chats, Termine), Menü mit „Neue E-Mail",
   Autostart, Server-Adresse; beim Schließen läuft Kuvert im Hintergrund weiter
 - **Links im Standardbrowser:** Links auf andere Seiten gehen über das Betriebssystem an den Standardbrowser.
   Chromium-Browser (Vivaldi, Chrome, Edge, Brave …) öffnen sie im **zuletzt aktiven Profil** – anders als
   eine installierte PWA, die Links immer in ihrem eigenen Profil öffnet. Firefox nimmt sein Standardprofil.
 - **mailto:-Links** aus anderen Programmen öffnen eine neue Nachricht in Kuvert
-- **Benachrichtigungen** für neue Mails, Chats und Termine, solange die App läuft
+- **Benachrichtigungen des Systems** für neue Mails, Chats und Termine, solange die App läuft – ein Klick öffnet die passende Stelle in Kuvert
 - Rechtschreibprüfung (Deutsch/Englisch) und Kontextmenü mit Kopieren/Einfügen
 
 Die App lädt die Oberfläche direkt von deinem Kuvert-Server. **Neue Kuvert-Funktionen brauchen kein

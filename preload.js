@@ -8,13 +8,28 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const versionArg = process.argv.find((a) => a.startsWith('--kuvert-desktop-version='));
 
-// mailto:-Links, die ankommen, bevor Kuvert sich angemeldet hat, puffern
-const queue = [];
-let handler = null;
-ipcRenderer.on('kuvert:mailto', (_e, raw) => {
-  if (handler) handler(String(raw));
-  else queue.push(String(raw));
-});
+// mailto:-Links und Klicks auf Benachrichtigungen, die ankommen, bevor Kuvert sich angemeldet hat, puffern
+function channel(name) {
+  const queue = [];
+  let handler = null;
+  ipcRenderer.on(name, (_e, value) => {
+    if (handler) handler(String(value));
+    else queue.push(String(value));
+  });
+  return (cb) => {
+    if (typeof cb !== 'function') return;
+    handler = (value) => {
+      try {
+        cb(value);
+      } catch {
+        /* Fehler der Seite nicht in die Brücke tragen */
+      }
+    };
+    while (queue.length) handler(queue.shift());
+  };
+}
+const onMailto = channel('kuvert:mailto');
+const onNavigate = channel('kuvert:navigate');
 
 contextBridge.exposeInMainWorld('kuvertDesktop', {
   version: versionArg ? versionArg.split('=')[1] : '',
@@ -22,17 +37,20 @@ contextBridge.exposeInMainWorld('kuvertDesktop', {
   /** Fenster nach vorn holen (z. B. Klick auf eine Benachrichtigung) */
   show: () => ipcRenderer.send('kuvert:show'),
   /** Neue Nachricht aus einem mailto:-Link (Systemaufruf oder „Neue E-Mail" im Infobereich) */
-  onMailto: (cb) => {
-    if (typeof cb !== 'function') return;
-    handler = (raw) => {
-      try {
-        cb(raw);
-      } catch {
-        /* Fehler der Seite nicht in die Brücke tragen */
-      }
-    };
-    while (queue.length) handler(queue.shift());
+  onMailto,
+  /** Native Systembenachrichtigung: { title, body, tag, url, requireInteraction } */
+  notify: (n) => {
+    if (!n || typeof n !== 'object') return;
+    ipcRenderer.send('kuvert:notify', {
+      title: String(n.title ?? ''),
+      body: n.body == null ? '' : String(n.body),
+      tag: n.tag == null ? '' : String(n.tag),
+      url: n.url == null ? '' : String(n.url),
+      requireInteraction: !!n.requireInteraction,
+    });
   },
+  /** Pfad in Kuvert öffnen, nachdem eine Benachrichtigung angeklickt wurde */
+  onNavigate,
   isDefaultMailClient: () => ipcRenderer.invoke('kuvert:mail-default:get'),
   setDefaultMailClient: () => ipcRenderer.invoke('kuvert:mail-default:set'),
 });

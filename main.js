@@ -9,7 +9,7 @@
  * - Symbol im Infobereich (Tray) mit Hinweis auf neue Nachrichten, läuft beim Schließen weiter
  * - kann als Programm für mailto:-Links dienen
  */
-const { app, BrowserWindow, Tray, Menu, shell, nativeImage, ipcMain, session, dialog, clipboard } = require('electron');
+const { app, BrowserWindow, Tray, Menu, Notification, shell, nativeImage, ipcMain, session, dialog, clipboard } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -270,7 +270,7 @@ function createWindow({ hidden }) {
     win = null;
   });
 
-  // Kuvert zählt neue Mails bei verborgenem Fenster im Titel: „(3) Kuvert"
+  // Kuvert zählt Neues (Mails, Chats, Termine, Tickets) im Hintergrund im Titel: „(3) Kuvert"
   win.webContents.on('page-title-updated', (_e, title) => {
     const m = /^\((\d+)\)/.exec(title);
     setUnread(m ? Number(m[1]) : 0);
@@ -305,7 +305,7 @@ function setUnread(n) {
   }
   if (!tray) return;
   tray.setImage(trayImage(n > 0));
-  tray.setToolTip(n > 0 ? `Kuvert – ${n} neue ${n === 1 ? 'Nachricht' : 'Nachrichten'}` : 'Kuvert');
+  tray.setToolTip(n > 0 ? `Kuvert – ${n} neu` : 'Kuvert');
   updateTrayMenu();
 }
 
@@ -498,6 +498,40 @@ ipcMain.on('kuvert:show', (e) => {
     w.show();
     w.focus();
   }
+});
+
+/** Offene Benachrichtigungen je Tag (gleiches Tag ersetzt; Referenz verhindert vorzeitiges Aufräumen) */
+const notifications = new Map();
+let notificationSeq = 0;
+
+ipcMain.on('kuvert:notify', (e, n) => {
+  if (!fromOwn(e) || !Notification.isSupported() || !n) return;
+  const title = String(n.title || 'Kuvert').slice(0, 200);
+  const body = String(n.body || '').slice(0, 1000);
+  const tag = String(n.tag || `n${++notificationSeq}`);
+  // Nur Pfade innerhalb von Kuvert („/chat/…"), keine fremden Adressen
+  const url = typeof n.url === 'string' && /^\/(?!\/)/.test(n.url) ? n.url : '';
+
+  notifications.get(tag)?.close();
+  const notification = new Notification({
+    title,
+    body,
+    icon: ICON,
+    // Den Ton spielt Kuvert selbst (Einstellung „Ton")
+    silent: true,
+    timeoutType: n.requireInteraction ? 'never' : 'default',
+  });
+  notifications.set(tag, notification);
+  const forget = () => {
+    if (notifications.get(tag) === notification) notifications.delete(tag);
+  };
+  notification.on('click', () => {
+    forget();
+    showWindow();
+    if (url && win) win.webContents.send('kuvert:navigate', url);
+  });
+  notification.on('close', forget);
+  notification.show();
 });
 
 ipcMain.handle('kuvert:mail-default:get', (e) => fromOwn(e) && isDefaultMailClient());
