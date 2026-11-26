@@ -61,9 +61,6 @@
       "category": "Network",
       "maintainer": "Kuvert",
       "synopsis": "E-Mail, Kalender, Kontakte und Chat",
-      "mimeTypes": [
-        "x-scheme-handler/mailto"
-      ],
       "artifactName": "Kuvert-${version}-${arch}.${ext}"
     },
     "win": {
