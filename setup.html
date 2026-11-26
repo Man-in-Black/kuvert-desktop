@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src file:" />
+    <title>Kuvert einrichten</title>
+    <style>
+      :root {
+        --bg: #f4f5f7;
+        --card: #ffffff;
+        --text: #111827;
+        --muted: #6b7280;
+        --border: #d1d5db;
+        --primary: #2563eb;
+        --danger-bg: #fef2f2;
+        --danger: #b91c1c;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f1115;
+          --card: #181b21;
+          --text: #e5e7eb;
+          --muted: #9ca3af;
+          --border: #374151;
+          --primary: #3b82f6;
+          --danger-bg: #2a1215;
+          --danger: #fca5a5;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 16px;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      main {
+        width: 100%;
+        max-width: 440px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 28px;
+      }
+      img { width: 56px; height: 56px; display: block; margin-bottom: 16px; }
+      h1 { font-size: 20px; margin: 0 0 6px; }
+      p { margin: 0 0 18px; color: var(--muted); }
+      label { display: block; font-weight: 600; margin-bottom: 6px; }
+      input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg);
+        color: var(--text);
+        font: inherit;
+      }
+      input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+      button {
+        margin-top: 16px;
+        width: 100%;
+        padding: 10px 12px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--primary);
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled { opacity: 0.6; cursor: default; }
+      .error {
+        display: none;
+        margin-bottom: 16px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        background: var(--danger-bg);
+        color: var(--danger);
+      }
+      .error.show { display: block; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="assets/icon.png" alt="" />
+      <h1>Kuvert einrichten</h1>
+      <p>Unter welcher Adresse ist dein Kuvert erreichbar? Die App lädt dann genau diese Oberfläche.</p>
+      <div id="error" class="error" role="alert"></div>
+      <form id="form">
+        <label for="server">Kuvert-Adresse</label>
+        <input id="server" type="text" inputmode="url" autocomplete="url" placeholder="https://mail.example.de" required autofocus />
+        <button id="save" type="submit">Verbinden</button>
+      </form>
+    </main>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const input = document.getElementById('server');
+      const errorBox = document.getElementById('error');
+      const button = document.getElementById('save');
+      input.value = params.get('server') || '';
+      const showError = (msg) => {
+        errorBox.textContent = msg || '';
+        errorBox.classList.toggle('show', !!msg);
+      };
+      showError(params.get('error'));
+      if (params.get('error')) button.textContent = 'Erneut verbinden';
+      document.getElementById('form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        button.disabled = true;
+        showError('');
+        try {
+          const res = await window.kuvertSetup.save(input.value);
+          if (!res || !res.ok) showError((res && res.error) || 'Speichern fehlgeschlagen');
+        } catch (err) {
+          showError(String(err));
+        } finally {
+          button.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
