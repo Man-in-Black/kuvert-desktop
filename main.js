@@ -190,8 +190,10 @@ const webPreferences = () => ({
   sandbox: true,
   nodeIntegration: false,
   spellcheck: true,
-  // Läuft im Infobereich weiter: Live-Verbindung und Benachrichtigungen nicht drosseln
-  backgroundThrottling: false,
+  // backgroundThrottling bleibt an: Ohne Drosselung meldet Electron die Seite immer als sichtbar
+  // (Page Visibility API) – Kuvert würde dann bei verstecktem Fenster weder neue Mails im Titel
+  // zählen (roter Punkt im Infobereich) noch Desktop-Benachrichtigungen zeigen. Die Live-Verbindung
+  // (Server-Sent Events) läuft auch gedrosselt weiter.
   additionalArguments: [`--kuvert-desktop-version=${app.getVersion()}`],
 });
 
