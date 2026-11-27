@@ -9,7 +9,7 @@
  * - Symbol im Infobereich (Tray) mit Hinweis auf neue Nachrichten, läuft beim Schließen weiter
  * - kann als Programm für mailto:-Links dienen
  */
-const { app, BrowserWindow, Tray, Menu, Notification, shell, nativeImage, ipcMain, session, dialog, clipboard } = require('electron');
+const { app, BrowserWindow, Tray, Menu, Notification, shell, nativeImage, ipcMain, session, dialog, clipboard, desktopCapturer } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -18,6 +18,7 @@ const ASSETS = path.join(__dirname, 'assets');
 const ICON = path.join(ASSETS, 'icon.png');
 const PRELOAD = path.join(__dirname, 'preload.js');
 const SETUP_PAGE = path.join(__dirname, 'setup.html');
+const PICKER_PAGE = path.join(__dirname, 'picker.html');
 /** Schemata, die an das Betriebssystem weitergereicht werden (alles andere wird ignoriert) */
 const EXTERNAL_SCHEMES = new Set(['http:', 'https:', 'mailto:', 'tel:']);
 
@@ -485,6 +486,94 @@ app.on('web-contents-created', (_e, contents) => {
   contents.on('context-menu', (_ev, params) => contextMenu(contents, params));
 });
 
+/* ───────────── Bildschirmfreigabe (Anrufe in Kuvert) ───────────── */
+
+/** Offene Auswahl: { win, sources, finish(id) } */
+let picker = null;
+
+/**
+ * getDisplayMedia() der Seite: Electron hat keine eingebaute Auswahl. macOS ab 15 zeigt die des Systems
+ * (useSystemPicker), unter Linux mit Wayland fragt das System beim Abruf der Quellen selbst (Portal) und
+ * liefert genau eine – sonst wählt man in picker.html.
+ */
+async function pickDisplaySource(request, callback) {
+  let answered = false;
+  const answer = (streams) => {
+    if (answered) return;
+    answered = true;
+    try {
+      callback(streams);
+    } catch {
+      /* Anfrage inzwischen hinfällig */
+    }
+  };
+  const deny = () => answer(null);
+  // Ton des Systems mitschicken geht nur unter Windows
+  const grant = (source) => answer({ video: source, ...(request.audioRequested && process.platform === 'win32' ? { audio: 'loopback' } : {}) });
+
+  if (!request.videoRequested || !isOwn(request.securityOrigin || request.frame?.url || '')) return deny();
+  if (picker) {
+    picker.win.focus();
+    return deny();
+  }
+
+  let sources;
+  try {
+    sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 200 } });
+  } catch {
+    return deny();
+  }
+  if (sources.length <= 1) return sources.length ? grant(sources[0]) : deny();
+
+  const parent = BrowserWindow.getFocusedWindow() ?? win ?? undefined;
+  const pw = new BrowserWindow({
+    parent,
+    modal: !!parent,
+    width: 760,
+    height: 560,
+    minWidth: 480,
+    minHeight: 360,
+    show: false,
+    title: 'Bildschirm freigeben',
+    icon: ICON,
+    autoHideMenuBar: true,
+    backgroundColor: '#f4f5f7',
+    webPreferences: { preload: PRELOAD, contextIsolation: true, sandbox: true, nodeIntegration: false },
+  });
+  pw.setMenu(null);
+  picker = {
+    win: pw,
+    sources,
+    finish(id) {
+      if (picker?.win !== pw) return;
+      picker = null;
+      const source = sources.find((src) => src.id === id);
+      if (source) grant(source);
+      else deny();
+      if (!pw.isDestroyed()) pw.close();
+    },
+  };
+  pw.on('closed', () => picker?.win === pw && picker.finish(''));
+  pw.once('ready-to-show', () => pw.show());
+  void pw.loadFile(PICKER_PAGE);
+}
+
+const fromPicker = (e) => !!picker && e.sender === picker.win.webContents;
+
+ipcMain.handle('picker:sources', (e) => {
+  if (!fromPicker(e)) return [];
+  const screens = picker.sources.filter((s) => s.id.startsWith('screen:'));
+  return picker.sources.map((s) => {
+    const kind = s.id.startsWith('screen:') ? 'screen' : 'window';
+    const name = kind === 'screen' ? (screens.length > 1 ? `Bildschirm ${screens.indexOf(s) + 1}` : 'Ganzer Bildschirm') : s.name;
+    return { id: s.id, name, kind, thumbnail: s.thumbnail.isEmpty() ? '' : s.thumbnail.toDataURL() };
+  });
+});
+
+ipcMain.on('picker:choose', (e, id) => {
+  if (fromPicker(e)) picker.finish(String(id ?? ''));
+});
+
 /* ───────────── Schnittstelle zur Seite (preload.js) ───────────── */
 
 const fromOwn = (e) => isOwn(e.senderFrame?.url ?? '');
@@ -593,9 +682,12 @@ if (!app.requestSingleInstanceLock()) {
       /* macOS: Rechtschreibprüfung des Systems */
     }
     // Berechtigungen nur für die eigene Kuvert-Instanz
-    const allowed = new Set(['notifications', 'clipboard-read', 'clipboard-sanitized-write', 'fullscreen', 'media']);
+    const allowed = new Set(['notifications', 'clipboard-read', 'clipboard-sanitized-write', 'fullscreen', 'media', 'display-capture', 'speaker-selection']);
     session.defaultSession.setPermissionRequestHandler((_wc, permission, cb, details) => {
       cb(allowed.has(permission) && isOwn(details.requestingUrl ?? ''));
+    });
+    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => void pickDisplaySource(request, callback), {
+      useSystemPicker: true,
     });
 
     createAppMenu();

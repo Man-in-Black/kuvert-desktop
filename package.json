@@ -1,7 +1,7 @@
 {
   "name": "kuvert-desktop",
   "productName": "Kuvert",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Kuvert als Desktop-App – schlanke Hülle um die Kuvert-Weboberfläche",
   "homepage": "https://github.com/Man-in-Black/kuvert-desktop",
@@ -25,6 +25,7 @@
       "main.js",
       "preload.js",
       "setup.html",
+      "picker.html",
       "assets/*.png"
     ],
     "directories": {
@@ -104,7 +105,11 @@
       "category": "public.app-category.productivity",
       "artifactName": "Kuvert-${version}-${arch}.${ext}",
       "identity": "-",
-      "hardenedRuntime": false
+      "hardenedRuntime": false,
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Kuvert braucht das Mikrofon für Anrufe im Team-Chat.",
+        "NSCameraUsageDescription": "Kuvert braucht die Kamera für Videoanrufe im Team-Chat."
+      }
     }
   },
   "repository": {

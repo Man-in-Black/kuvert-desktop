@@ -55,8 +55,16 @@ contextBridge.exposeInMainWorld('kuvertDesktop', {
   setDefaultMailClient: () => ipcRenderer.invoke('kuvert:mail-default:set'),
 });
 
-if (location.protocol === 'file:') {
+if (location.protocol === 'file:' && location.pathname.endsWith('/setup.html')) {
   contextBridge.exposeInMainWorld('kuvertSetup', {
     save: (url) => ipcRenderer.invoke('setup:save', String(url)),
+  });
+}
+
+// Auswahl für die Bildschirmfreigabe (picker.html)
+if (location.protocol === 'file:' && location.pathname.endsWith('/picker.html')) {
+  contextBridge.exposeInMainWorld('kuvertPicker', {
+    sources: () => ipcRenderer.invoke('picker:sources'),
+    choose: (id) => ipcRenderer.send('picker:choose', String(id ?? '')),
   });
 }

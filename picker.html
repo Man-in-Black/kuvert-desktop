@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:" />
+    <title>Bildschirm freigeben</title>
+    <style>
+      :root {
+        --bg: #f4f5f7;
+        --card: #ffffff;
+        --text: #111827;
+        --muted: #6b7280;
+        --border: #d1d5db;
+        --primary: #2563eb;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0f1115;
+          --card: #181b21;
+          --text: #e5e7eb;
+          --muted: #9ca3af;
+          --border: #374151;
+          --primary: #3b82f6;
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      header { padding: 14px 16px 4px; }
+      h1 { margin: 0; font-size: 16px; }
+      nav { display: flex; gap: 6px; padding: 10px 16px 0; }
+      nav button {
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        border-radius: 999px;
+        padding: 4px 12px;
+        font: inherit;
+        cursor: pointer;
+      }
+      nav button[aria-pressed='true'] { background: var(--primary); border-color: var(--primary); color: #fff; }
+      #list {
+        flex: 1;
+        overflow: auto;
+        padding: 12px 16px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+        gap: 10px;
+        align-content: start;
+      }
+      .src {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px;
+        border: 2px solid transparent;
+        border-radius: 10px;
+        background: var(--card);
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+      .src:hover, .src:focus-visible { border-color: var(--primary); outline: none; }
+      .src img { width: 100%; aspect-ratio: 16 / 10; object-fit: contain; background: #000; border-radius: 6px; }
+      .src span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+      .empty { color: var(--muted); grid-column: 1 / -1; padding: 24px 0; text-align: center; }
+      footer { display: flex; justify-content: flex-end; padding: 10px 16px 14px; border-top: 1px solid var(--border); }
+      footer button {
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 6px 14px;
+        font: inherit;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <header><h1>Was möchtest du freigeben?</h1></header>
+    <nav>
+      <button type="button" data-kind="screen" aria-pressed="true">Ganzer Bildschirm</button>
+      <button type="button" data-kind="window" aria-pressed="false">Fenster</button>
+    </nav>
+    <div id="list" role="list"></div>
+    <footer><button type="button" id="cancel">Abbrechen</button></footer>
+    <script>
+      const list = document.getElementById('list');
+      let sources = [];
+      let kind = 'screen';
+
+      function render() {
+        list.textContent = '';
+        const shown = sources.filter((s) => s.kind === kind);
+        if (!shown.length) {
+          const p = document.createElement('p');
+          p.className = 'empty';
+          p.textContent = kind === 'screen' ? 'Kein Bildschirm gefunden' : 'Keine Fenster gefunden';
+          list.append(p);
+          return;
+        }
+        for (const s of shown) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'src';
+          b.setAttribute('role', 'listitem');
+          b.title = s.name;
+          if (s.thumbnail) {
+            const img = document.createElement('img');
+            img.src = s.thumbnail;
+            img.alt = '';
+            b.append(img);
+          }
+          const label = document.createElement('span');
+          label.textContent = s.name;
+          b.append(label);
+          b.addEventListener('click', () => window.kuvertPicker.choose(s.id));
+          list.append(b);
+        }
+      }
+
+      for (const tab of document.querySelectorAll('nav button')) {
+        tab.addEventListener('click', () => {
+          kind = tab.dataset.kind;
+          for (const t of document.querySelectorAll('nav button')) t.setAttribute('aria-pressed', String(t === tab));
+          render();
+        });
+      }
+      document.getElementById('cancel').addEventListener('click', () => window.kuvertPicker.choose(''));
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') window.kuvertPicker.choose('');
+      });
+
+      window.kuvertPicker.sources().then((all) => {
+        sources = all;
+        if (!sources.some((s) => s.kind === 'screen')) kind = 'window';
+        for (const t of document.querySelectorAll('nav button')) t.setAttribute('aria-pressed', String(t.dataset.kind === kind));
+        render();
+      });
+    </script>
+  </body>
+</html>

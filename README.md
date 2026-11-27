@@ -12,6 +12,8 @@ Kuvert-Weboberfläche für **Linux, Windows und macOS**.
 - **mailto:-Links** aus anderen Programmen öffnen eine neue Nachricht in Kuvert
 - **Benachrichtigungen des Systems** für neue Mails, Chats und Termine, solange die App läuft – ein Klick öffnet die passende Stelle in Kuvert
 - Rechtschreibprüfung (Deutsch/Englisch) und Kontextmenü mit Kopieren/Einfügen
+- **Anrufe im Team-Chat** mit Mikrofon, Kamera und **Bildschirmfreigabe** (Auswahl von Bildschirm oder Fenster;
+  macOS ab 15 und Linux mit Wayland zeigen die Auswahl des Systems)
 
 Die App lädt die Oberfläche direkt von deinem Kuvert-Server. **Neue Kuvert-Funktionen brauchen kein
 App-Update** – sie sind nach dem nächsten Neuladen da. Aktualisieren muss man die App nur für neue
@@ -35,6 +37,9 @@ freigeben und dann normal starten:
 ```bash
 xattr -dr com.apple.quarantine /Applications/Kuvert.app
 ```
+
+Für die **Bildschirmfreigabe** fragt macOS beim ersten Mal nach der Berechtigung *Bildschirm- und
+Systemaudioaufnahme*. Nach dem Erlauben Kuvert einmal beenden und neu starten.
 
 **Symbol im Infobereich unter GNOME:** GNOME zeigt Tray-Symbole nur mit der Erweiterung
 „AppIndicator and KStatusNotifierItem Support" (bei Ubuntu vorinstalliert). Ohne sie bringt ein erneuter
